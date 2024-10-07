@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"container/list"
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -4531,7 +4532,7 @@ type NewCommitState struct {
 //
 //nolint:funlen
 func (lc *LightningChannel) SignNextCommitment(
-	quit <-chan struct{}) (*NewCommitState, error) {
+	ctx context.Context) (*NewCommitState, error) {
 
 	lc.Lock()
 	defer lc.Unlock()
@@ -4702,7 +4703,7 @@ func (lc *LightningChannel) SignNextCommitment(
 		var jobResp SignJobResp
 
 		select {
-		case <-quit:
+		case <-ctx.Done():
 			return nil, errQuit
 		case jobResp = <-htlcSigJob.Resp:
 		}
@@ -4724,7 +4725,7 @@ func (lc *LightningChannel) SignNextCommitment(
 		var auxJobResp AuxSigJobResp
 
 		select {
-		case <-quit:
+		case <-ctx.Done():
 			return nil, errQuit
 		case auxJobResp = <-auxHtlcSigJob.Resp:
 		}
@@ -4820,7 +4821,7 @@ func (lc *LightningChannel) resignMusigCommit(commitTx *wire.MsgTx,
 // previous commitment txn. This allows the link to clear its mailbox of those
 // circuits in case they are still in memory, and ensure the switch's circuit
 // map has been updated by deleting the closed circuits.
-func (lc *LightningChannel) ProcessChanSyncMsg(quit <-chan struct{},
+func (lc *LightningChannel) ProcessChanSyncMsg(ctx context.Context,
 	msg *lnwire.ChannelReestablish) ([]lnwire.Message, []models.CircuitKey,
 	[]models.CircuitKey, error) {
 
@@ -4984,7 +4985,7 @@ func (lc *LightningChannel) ProcessChanSyncMsg(quit <-chan struct{},
 		// revocation, but also initiate a state transition to re-sync
 		// them.
 		if lc.OweCommitment() {
-			newCommit, err := lc.SignNextCommitment(quit)
+			newCommit, err := lc.SignNextCommitment(ctx)
 			switch {
 
 			// If we signed this state, then we'll accumulate

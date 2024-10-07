@@ -1133,7 +1133,7 @@ func (h *hopNetwork) createChannelLink(server, peer *mockServer,
 			FwrdingPolicy: h.globalPolicy,
 			Peer:          peer,
 			Circuits:      server.htlcSwitch.CircuitModifier(),
-			ForwardPackets: func(linkQuit chan struct{}, _ bool, packets ...*htlcPacket) error {
+			ForwardPackets: func(linkQuit <-chan struct{}, _ bool, packets ...*htlcPacket) error {
 				return server.htlcSwitch.ForwardPackets(linkQuit, packets...)
 			},
 			DecodeHopIterators: decoder.DecodeHopIterators,
@@ -1179,7 +1179,7 @@ func (h *hopNetwork) createChannelLink(server, peer *mockServer,
 		for {
 			select {
 			case <-notifyUpdateChan:
-			case <-link.(*channelLink).quit:
+			case <-link.(*channelLink).quit.Done():
 				close(doneChan)
 				return
 			}

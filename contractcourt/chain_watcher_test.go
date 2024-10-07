@@ -2,6 +2,7 @@ package contractcourt
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"testing"
@@ -145,8 +146,9 @@ func TestChainWatcherRemoteUnilateralClosePendingCommit(t *testing.T) {
 
 	// With the HTLC added, we'll now manually initiate a state transition
 	// from Alice to Bob.
-	testQuitChan := make(chan struct{})
-	_, err = aliceChannel.SignNextCommitment(testQuitChan)
+	bgCtx := context.Background()
+	testQuit, _ := context.WithCancel(bgCtx)
+	_, err = aliceChannel.SignNextCommitment(testQuit)
 	if err != nil {
 		t.Fatal(err)
 	}

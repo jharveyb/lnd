@@ -2197,7 +2197,7 @@ func newSingleLinkTestHarness(t *testing.T, chanAmt,
 		Peer:          alicePeer,
 		BestHeight:    aliceSwitch.BestHeight,
 		Circuits:      aliceSwitch.CircuitModifier(),
-		ForwardPackets: func(linkQuit chan struct{}, _ bool, packets ...*htlcPacket) error {
+		ForwardPackets: func(linkQuit <-chan struct{}, _ bool, packets ...*htlcPacket) error {
 			return aliceSwitch.ForwardPackets(linkQuit, packets...)
 		},
 		DecodeHopIterators: decoder.DecodeHopIterators,
@@ -2243,7 +2243,7 @@ func newSingleLinkTestHarness(t *testing.T, chanAmt,
 		for {
 			select {
 			case <-notifyUpdateChan:
-			case <-aliceLink.(*channelLink).quit:
+			case <-aliceLink.(*channelLink).quit.Done():
 				close(doneChan)
 				return
 			}
@@ -2355,7 +2355,7 @@ func updateState(batchTick chan time.Time, link *channelLink,
 		// Trigger update by ticking the batchTicker.
 		select {
 		case batchTick <- time.Now():
-		case <-link.quit:
+		case <-link.quit.Done():
 			return fmt.Errorf("link shutting down")
 		}
 		return handleStateUpdate(link, remoteChannel)
@@ -4857,7 +4857,7 @@ func (h *persistentLinkHarness) restartLink(
 		Peer:          alicePeer,
 		BestHeight:    h.hSwitch.BestHeight,
 		Circuits:      h.hSwitch.CircuitModifier(),
-		ForwardPackets: func(linkQuit chan struct{}, _ bool, packets ...*htlcPacket) error {
+		ForwardPackets: func(linkQuit <-chan struct{}, _ bool, packets ...*htlcPacket) error {
 			return h.hSwitch.ForwardPackets(linkQuit, packets...)
 		},
 		DecodeHopIterators: decoder.DecodeHopIterators,
@@ -4907,7 +4907,7 @@ func (h *persistentLinkHarness) restartLink(
 		for {
 			select {
 			case <-notifyUpdateChan:
-			case <-aliceLink.(*channelLink).quit:
+			case <-aliceLink.(*channelLink).quit.Done():
 				close(doneChan)
 				return
 			}
@@ -7022,7 +7022,7 @@ func TestPipelineSettle(t *testing.T) {
 	// erroneously forwarded. If the forwardChan is closed before the last
 	// step, then the test will fail.
 	forwardChan := make(chan struct{})
-	fwdPkts := func(c chan struct{}, _ bool, hp ...*htlcPacket) error {
+	fwdPkts := func(c <-chan struct{}, _ bool, hp ...*htlcPacket) error {
 		close(forwardChan)
 		return nil
 	}
@@ -7208,7 +7208,7 @@ func TestChannelLinkShortFailureRelay(t *testing.T) {
 	aliceMsgs := mockPeer.sentMsgs
 	switchChan := make(chan *htlcPacket)
 
-	coreLink.cfg.ForwardPackets = func(linkQuit chan struct{}, _ bool,
+	coreLink.cfg.ForwardPackets = func(linkQuit <-chan struct{}, _ bool,
 		packets ...*htlcPacket) error {
 
 		for _, p := range packets {
